@@ -12,9 +12,21 @@
 #include "include/mqtt.h"
 #include "include/dht11.h"
 #include "include/gpio.h"
+#include <time.h>
 
 SemaphoreHandle_t conexaoWifiSemaphore;
 SemaphoreHandle_t conexaoMQTTSemaphore;
+
+TaskHandle_t taskHandleWifi;
+TaskHandle_t taskHandleFlame;
+TaskHandle_t taskHandleDht;
+TaskHandle_t taskHandleRgb;
+TaskHandle_t taskHandleBuzzer;
+
+int overallTemperature;
+int alarmSystem = false;
+int stopAlarm = 0;
+int flameSensor = false;
 
 void sendInformation(char* info ,int data, char* topic) {
   char msg[200];
@@ -37,6 +49,9 @@ void DHT11(void *params) {
             if (data.status == 0 || (data.temperature > 0 && data.humidity > 0)) {
               sendInformation("{\"temperature\": %d}", data.temperature, "v1/devices/me/telemetry");
               sendInformation("{\"umidade\": %d}", data.humidity, "v1/devices/me/attributes");
+              sendInformation("{\"alarme\": %d}", alarmSystem, "v1/devices/me/telemetry");
+              sendInformation("{\"chama\": %d}", flameSensor, "v1/devices/me/attributes");
+              overallTemperature = data.temperature;
             }
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
@@ -48,26 +63,50 @@ void BUZZER(void *params) {
   playSound();
 }
 
-/*void rgb(void *params){
-  configureRGB();
-  changeColor();
-}*/
+void rgb(void *params){
+  setUpPwm(100.0);
+  while(true){
+    changeColor(255, 0, 0);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    changeColor(0, 0, 255);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
+
+void flame(void *params){
+  configureFlame();
+  while(true){
+    if(flameSensor == false && gpio_get_level(5) == 1){
+      printf("Sensor de fogo ativado\n");
+      flameSensor = true;
+    } else if (flameSensor == true && gpio_get_level(5) == 0){
+      printf("Chama apagada\n");
+      flameSensor = false;
+    }
+    vTaskDelay(1000);
+    printf("Estado da chama:%d\nEstado do sensor%d\n", flameSensor, gpio_get_level(5));
+  }
+}
 
 void mqttTask(void *params) {
-  xTaskCreate(&conectadoWifi, "Conexão ao MQTT", 4096, NULL, 1, NULL);
+  xTaskCreate(&conectadoWifi, "Conexão ao MQTT", 4096, NULL, 1, &taskHandleWifi);
 }
 
 void dht11Task(void *params) {
-  xTaskCreate(&DHT11, "Coleta de temperatura e umidade", 4096, NULL, 1, NULL);
+  xTaskCreate(&DHT11, "Coleta de temperatura e umidade", 4096, NULL, 1, &taskHandleDht);
 }
 
 void buzzerTask(void *params) {
-  xTaskCreate(&BUZZER, "Acionamento buzzer", 4096, NULL, 1, NULL);
+  xTaskCreate(&BUZZER, "Acionamento buzzer", 4096, NULL, 1, &taskHandleBuzzer);
 }
 
-//void rgbTask(void *params) {
-  //xTaskCreate(&rgb, "Acionamento do RGB", 4096, NULL, 1, NULL);
-//}
+void rgbTask(void *params) {
+  xTaskCreate(&rgb, "Acionamento do RGB", 4096, NULL, 1, &taskHandleRgb);
+}
+
+void flameTask(void *params) {
+  xTaskCreate(&flame, "Acionamento do sensor de chama", 4096, NULL, 1, &taskHandleFlame);
+}
 
 void app_main(void)
 {
@@ -83,16 +122,29 @@ void app_main(void)
     conexaoMQTTSemaphore = xSemaphoreCreateBinary();
     wifi_start();
 
-    pthread_t tid[4];
-
-    configureRGB();
+    pthread_t tid[5];
     pthread_create(&tid[0], NULL, (void *)mqttTask, (void *)NULL);
     pthread_create(&tid[1], NULL, (void *)dht11Task, (void *)NULL);
-    pthread_create(&tid[2], NULL, (void *)buzzerTask, (void *)NULL);
-    //pthread_create(&tid[3], NULL, (void *)buzzerTask, (void *)NULL);
+    pthread_create(&tid[4], NULL, (void *)flameTask, (void *)NULL);
+    while(true){
+      if(overallTemperature >= 31 && alarmSystem == false && flameSensor == true){
+        alarmSystem = true;
+        pthread_create(&tid[2], NULL, (void *)buzzerTask, (void *)NULL);
+        pthread_create(&tid[3], NULL, (void *)rgbTask, (void *)NULL);
+      } else if (overallTemperature < 31 && alarmSystem == true && flameSensor == false){
+        changeColor(0,0,0);
+        stopSound();
+        vTaskDelete(taskHandleBuzzer);
+        vTaskDelete(taskHandleRgb);
+        pthread_join(tid[2], NULL);
+        pthread_join(tid[3], NULL);
+        alarmSystem = false;
+      }
+    }
 
     pthread_join(tid[0], NULL);
     pthread_join(tid[1], NULL);
     pthread_join(tid[2], NULL);
-    //pthread_join(tid[3], NULL);
+    pthread_join(tid[3], NULL);
+    pthread_join(tid[4], NULL);
 }

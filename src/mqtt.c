@@ -33,7 +33,7 @@ void mqtt_recebe_mensagem(char * payload) {
 
     if (strcmp(method, "setIntensity") == 0) {
         double intensity = cJSON_GetObjectItem(root, "params")->valuedouble;
-        ledPWM(intensity);
+        setUpPwm(intensity);
     }
 }
 
