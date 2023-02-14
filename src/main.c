@@ -48,7 +48,7 @@ void DHT11(void *params) {
             struct dht11_reading data = getInformation();
             if (data.status == 0 || (data.temperature > 0 && data.humidity > 0)) {
               sendInformation("{\"temperature\": %d}", data.temperature, "v1/devices/me/telemetry");
-              sendInformation("{\"umidade\": %d}", data.humidity, "v1/devices/me/attributes");
+              sendInformation("{\"umidade\": %d}", data.humidity, "v1/devices/me/telemetry");
               sendInformation("{\"alarme\": %d}", alarmSystem, "v1/devices/me/telemetry");
               sendInformation("{\"chama\": %d}", flameSensor, "v1/devices/me/attributes");
               overallTemperature = data.temperature;

@@ -14,6 +14,7 @@ void configureFlame();
 void setUpPwm(double intensity);
 void playSound();
 void stopSound();
+void playSoundDashboard(double intensity);
 void changeColor(uint8_t red, uint8_t green, uint8_t blue);
 
 #endif

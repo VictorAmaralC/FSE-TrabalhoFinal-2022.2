@@ -31,9 +31,9 @@ void mqtt_recebe_mensagem(char * payload) {
     cJSON *root = cJSON_Parse(payload);
     char *method = cJSON_GetObjectItem(root, "method")->valuestring;
 
-    if (strcmp(method, "setIntensity") == 0) {
+    if (strcmp(method, "setValue") == 0) {
         double intensity = cJSON_GetObjectItem(root, "params")->valuedouble;
-        setUpPwm(intensity);
+        playSoundDashboard(intensity);
     }
 }
 
