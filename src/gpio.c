@@ -8,9 +8,9 @@
 #include "driver/ledc.h"
 #include "include/gpio.h"
 
-#define RGB_RED       18
+#define RGB_RED       21
 #define RGB_GREEN     19
-#define RGB_BLUE      21
+#define RGB_BLUE      18
 #define BUZZER_GPIO   22
 #define BUTTON_GPIO    0
 #define FLAME_GPIO     5

@@ -127,11 +127,11 @@ void app_main(void)
     pthread_create(&tid[1], NULL, (void *)dht11Task, (void *)NULL);
     pthread_create(&tid[4], NULL, (void *)flameTask, (void *)NULL);
     while(true){
-      if(overallTemperature >= 31 && alarmSystem == false && flameSensor == true){
+      if(overallTemperature >= 30 && alarmSystem == false && flameSensor == true){
         alarmSystem = true;
         pthread_create(&tid[2], NULL, (void *)buzzerTask, (void *)NULL);
         pthread_create(&tid[3], NULL, (void *)rgbTask, (void *)NULL);
-      } else if (overallTemperature < 31 && alarmSystem == true && flameSensor == false){
+      } else if (overallTemperature < 30 && alarmSystem == true && flameSensor == false){
         changeColor(0,0,0);
         stopSound();
         vTaskDelete(taskHandleBuzzer);
